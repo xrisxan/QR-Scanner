@@ -101,13 +101,8 @@
     </div>
 
     <script>
-        // Betriebs-ID aus der URL holen
-        const urlParams = new URLSearchParams(window.location.search);
-        const betriebId = urlParams.get('betrieb');
-        
-        if (!betriebId) {
-            document.getElementById('output').innerText = "❌ Keine Betriebs-ID in der URL!";
-        } else {
+        // ⚠️ HIER deine Betriebs-ID eintragen!
+        const betriebId = "89a340a6-42fc-47a9-a39c-1d6b71877878";
         const apiUrl = `http://172.20.10.6:5290/api/stempeln?b=${betriebId}&p=`;
         
         const html5QrCode = new Html5Qrcode("reader");
