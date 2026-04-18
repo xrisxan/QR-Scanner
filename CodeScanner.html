@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner mit Fokus-Fenster</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Container für den Scanner */
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #444;
+        }
+
+        #reader {
+            width: 100%;
+            background: black;
+        }
+
+        /* Das visuelle Fixier-Fenster (Overlay) */
+        .scanner-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Klicks gehen durch das Overlay zum Video-Element */
+            z-index: 10;
+        }
+
+        .focus-box {
+            width: 250px;
+            height: 250px;
+            border: 2px solid #00ff00; /* Grüner Rahmen */
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkler Bereich außenrum */
+            border-radius: 10px;
+            position: relative;
+        }
+
+        /* Die animierte Scan-Linie */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: #00ff00;
+            top: 0;
+            box-shadow: 0 0 8px #00ff00;
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        #result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        #output {
+            color: #00ff00;
+            font-weight: bold;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Code Scannen</h2>
+    
+    <div id="scanner-container">
+        <div id="reader"></div>
+        <div class="scanner-overlay">
+            <div class="focus-box">
+                <div class="scan-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-box">
+        Gefundener Code: <br>
+        <span id="output">Warte auf Scan...</span>
+    </div>
+
+    <script>
+        const html5QrCode = new Html5Qrcode("reader");
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 250 }, // Hier sagen wir der Software, wo sie suchen soll
+            aspectRatio: 1.0 
+        };
+
+        const onScanSuccess = (decodedText, decodedResult) => {
+            document.getElementById('output').innerText = decodedText;
+            // Kurzes Feedback (Vibration), falls vom Gerät unterstützt
+            if (navigator.vibrate) navigator.vibrate(100);
+        };
+
+        // Kamera starten (Rückkamera bevorzugt)
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess
+        ).catch((err) => {
+            console.error("Kamera-Fehler:", err);
+            document.getElementById('output').innerText = "Kamera konnte nicht gestartet werden.";
+        });
+    </script>
+</body>
+</html>
