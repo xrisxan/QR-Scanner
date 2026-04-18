@@ -17,7 +17,6 @@
             padding: 20px;
         }
 
-        /* Container für den Scanner */
         #scanner-container {
             position: relative;
             width: 100%;
@@ -32,27 +31,25 @@
             background: black;
         }
 
-        /* Das visuelle Fixier-Fenster (Overlay) */
         .scanner-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            pointer-events: none; /* Klicks gehen durch das Overlay zum Video-Element */
+            pointer-events: none;
             z-index: 10;
         }
 
         .focus-box {
             width: 250px;
             height: 250px;
-            border: 2px solid #00ff00; /* Grüner Rahmen */
-            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Dunkler Bereich außenrum */
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
             border-radius: 10px;
             position: relative;
         }
 
-        /* Die animierte Scan-Linie */
         .scan-line {
             position: absolute;
             width: 100%;
@@ -87,7 +84,7 @@
 </head>
 <body>
 
-    <h2>Code Scannen</h2>
+    <h2>TimeTracker - Zeiterfassung</h2>
     
     <div id="scanner-container">
         <div id="reader"></div>
@@ -99,80 +96,55 @@
     </div>
 
     <div id="result-box">
-        Gefundener Code: <br>
+        Status: <br>
         <span id="output">Warte auf Scan...</span>
     </div>
 
     <script>
+        // ⚠️ HIER deine Betriebs-ID eintragen!
+        const betriebId = "89a340a6-42fc-47a9-a39c-1d6b71877878";
+        const apiUrl = `http://172.20.10.6:5290/api/stempeln?b=${betriebId}&p=`;
+        
         const html5QrCode = new Html5Qrcode("reader");
-        let isPaused = false; 
-    
-        // Funktion für einen LAUTEN, durchdringenden Ton
+        let isPaused = false;
+        
         function playLoudBeep() {
             const context = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Wir erstellen drei Oszillatoren gleichzeitig für einen "Wand-Effekt"
-            const frequencies = [1000, 1005, 995]; // Leicht versetzte Frequenzen klingen fetter/lauter
+            const frequencies = [1000, 1005, 995];
             
             frequencies.forEach(freq => {
                 const oscillator = context.createOscillator();
                 const gainNode = context.createGain();
-        
-                // 'sawtooth' ist die aggressivste und subjektiv lauteste Wellenform
-                oscillator.type = "sawtooth"; 
+                oscillator.type = "sawtooth";
                 oscillator.frequency.setValueAtTime(freq, context.currentTime);
-                
-                // Maximale Lautstärke ohne digitales Übersteuern
-                gainNode.gain.setValueAtTime(0.5, context.currentTime); 
+                gainNode.gain.setValueAtTime(0.5, context.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
-        
                 oscillator.connect(gainNode);
                 gainNode.connect(context.destination);
-        
                 oscillator.start();
                 oscillator.stop(context.currentTime + 0.4);
             });
         }
-    
+        
         const onScanSuccess = (decodedText, decodedResult) => {
-            // Wenn Pause aktiv, mache absolut gar nichts
             if (isPaused) return;
-    
-            // 1. Sofort Sperre aktivieren
             isPaused = true;
-            
-            // 2. Lauten Ton abspielen
             playLoudBeep();
-    
-            // 3. Ergebnis anzeigen
-            const output = document.getElementById('output');
-            output.innerText = "Gescannter Code: " + decodedText;
-            output.style.color = "#ff3300"; // Signalfarbe während der Pause
-    
-            // 4. 5 Sekunden Pause (Sperre)
-            console.log("Scan erfolgreich. Pause für 5 Sekunden...");
             
-            let secondsLeft = 5;
-            const interval = setInterval(() => {
-                secondsLeft--;
-                if (secondsLeft > 0) {
-                    output.innerText = `Pause... (${secondsLeft}s) - Code: ${decodedText}`;
-                } else {
-                    clearInterval(interval);
-                    isPaused = false; // Scan wieder freigeben
-                    output.innerText = "Bereit für nächsten Scan";
-                    output.style.color = "#00ff00";
-                }
-            }, 1000);
+            const output = document.getElementById('output');
+            output.innerText = "✅ Gescannt! Weiterleitung...";
+            output.style.color = "#ff3300";
+            
+            // 🔥 WEITERLEITUNG ZUR API (Personalnummer ist decodedText)
+            window.location.href = apiUrl + decodedText;
         };
-    
+        
         const config = { 
-            fps: 20, // Höhere FPS für schnellere Erkennung
+            fps: 20,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0 
         };
-    
-        // Startet die Kamera
+        
         html5QrCode.start(
             { facingMode: "environment" }, 
             config, 
