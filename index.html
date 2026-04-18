@@ -104,71 +104,77 @@
     </div>
 
     <script>
-const html5QrCode = new Html5Qrcode("reader");
-let isPaused = false; // Sperre für die 5-Sekunden-Pause
-
-// Funktion für den "Beep"-Ton
-function playBeep() {
-    const context = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, context.currentTime); // Frequenz in Hz (A5)
+        const html5QrCode = new Html5Qrcode("reader");
+        let isPaused = false; 
     
-    gainNode.gain.setValueAtTime(0.1, context.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
-
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
-
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.2);
-}
-
-const onScanSuccess = (decodedText, decodedResult) => {
-    // Prüfen, ob wir gerade in der 5-Sekunden-Pause sind
-    if (isPaused) return;
-
-    // 1. Sperre aktivieren
-    isPaused = true;
+        // Funktion für einen LAUTEN, durchdringenden Ton
+        function playLoudBeep() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gainNode = context.createGain();
     
-    // 2. Ton abspielen
-    playBeep();
-
-    // 3. Ergebnis anzeigen
-    const output = document.getElementById('output');
-    output.innerText = decodedText;
-    output.style.color = "#ffae00"; // Farbe kurz ändern zur Bestätigung
-
-    // 4. Countdown für den nächsten Scan
-    let timeLeft = 5;
-    const timerInterval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft > 0) {
-            output.innerText = `${decodedText} (Nächster Scan in ${timeLeft}s...)`;
-        } else {
-            clearInterval(timerInterval);
-            output.innerText = "Bereit für nächsten Scan...";
-            output.style.color = "#00ff00";
-            isPaused = false; // Sperre aufheben
+            // 'square' klingt viel lauter und schärfer als 'sine'
+            oscillator.type = "square"; 
+            oscillator.frequency.setValueAtTime(1000, context.currentTime); // 1000 Hz ist sehr gut hörbar
+            
+            // Lautstärke auf Maximum (1.0)
+            gainNode.gain.setValueAtTime(1.0, context.currentTime);
+            // Kurzes Ausblenden am Ende, um Knacken zu vermeiden
+            gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+    
+            oscillator.connect(gainNode);
+            gainNode.connect(context.destination);
+    
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.3);
         }
-    }, 1000);
-};
-
-const config = { 
-    fps: 15, 
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0 
-};
-
-html5QrCode.start(
-    { facingMode: "environment" }, 
-    config, 
-    onScanSuccess
-).catch((err) => {
-    document.getElementById('output').innerText = "Kamera-Fehler: " + err;
-});
+    
+        const onScanSuccess = (decodedText, decodedResult) => {
+            // Wenn Pause aktiv, mache absolut gar nichts
+            if (isPaused) return;
+    
+            // 1. Sofort Sperre aktivieren
+            isPaused = true;
+            
+            // 2. Lauten Ton abspielen
+            playLoudBeep();
+    
+            // 3. Ergebnis anzeigen
+            const output = document.getElementById('output');
+            output.innerText = "Gescannter Code: " + decodedText;
+            output.style.color = "#ff3300"; // Signalfarbe während der Pause
+    
+            // 4. 5 Sekunden Pause (Sperre)
+            console.log("Scan erfolgreich. Pause für 5 Sekunden...");
+            
+            let secondsLeft = 5;
+            const interval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    output.innerText = `Pause... (${secondsLeft}s) - Code: ${decodedText}`;
+                } else {
+                    clearInterval(interval);
+                    isPaused = false; // Scan wieder freigeben
+                    output.innerText = "Bereit für nächsten Scan";
+                    output.style.color = "#00ff00";
+                }
+            }, 1000);
+        };
+    
+        const config = { 
+            fps: 20, // Höhere FPS für schnellere Erkennung
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0 
+        };
+    
+        // Startet die Kamera
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess
+        ).catch((err) => {
+            document.getElementById('output').innerText = "Fehler: " + err;
+        });
     </script>
 </body>
 </html>
