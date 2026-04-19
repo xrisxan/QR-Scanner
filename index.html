@@ -2,33 +2,38 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TimeTracker - Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profi QR & Barcode Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #1a1a1a;
+            background-color: #121212;
             color: white;
             margin: 0;
             padding: 20px;
         }
-        #scanner-container {
+
+        h2 { margin-bottom: 10px; color: #00ff00; }
+
+        /* Container für das Kamera-Fenster */
+        #scanner-wrapper {
             position: relative;
             width: 100%;
             max-width: 500px;
-            border-radius: 15px;
+            border: 3px solid #333;
+            border-radius: 20px;
             overflow: hidden;
-            border: 2px solid #444;
+            background: #000;
         }
-        #reader {
-            width: 100%;
-            background: black;
-        }
-        .scanner-overlay {
+
+        #reader { width: 100%; }
+
+        /* Visuelles Overlay (Fixier-Fenster) */
+        .overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
@@ -37,178 +42,149 @@
             pointer-events: none;
             z-index: 10;
         }
+
         .focus-box {
-            width: 250px;
-            height: 250px;
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
+            width: 260px;
+            height: 180px; /* Rechteckig, gut für QR & Barcodes */
+            border: 3px solid #00ff00;
+            border-radius: 12px;
+            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6);
             position: relative;
         }
+
         .scan-line {
             position: absolute;
             width: 100%;
-            height: 2px;
-            background-color: #00ff00;
+            height: 3px;
+            background: #00ff00;
+            box-shadow: 0 0 15px #00ff00;
             top: 0;
-            box-shadow: 0 0 8px #00ff00;
-            animation: scan 2s linear infinite;
+            animation: moveScan 2s linear infinite;
         }
-        @keyframes scan {
-            0% { top: 0; }
+
+        @keyframes moveScan {
+            0% { top: 0%; }
             100% { top: 100%; }
         }
-        #result-box {
-            margin-top: 20px;
-            padding: 15px;
-            background: #333;
-            border-radius: 8px;
+
+        /* Ergebnis-Box */
+        #result-display {
+            margin-top: 25px;
+            padding: 20px;
+            background: #222;
+            border-radius: 15px;
             width: 100%;
             max-width: 500px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+
         #output {
-            color: #00ff00;
+            display: block;
+            margin-top: 10px;
+            font-size: 1.2rem;
             font-weight: bold;
-            word-break: break-all;
+            color: #00ff00;
+            word-wrap: break-word;
         }
-        .error { color: #ff6666; }
-        .btn-manual {
-            margin-top: 20px;
-            padding: 12px 24px;
-            background: #0078d4;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .manual-input {
-            margin-top: 15px;
-            padding: 12px;
-            width: 80%;
-            font-size: 16px;
-            border-radius: 8px;
-            border: none;
-            text-align: center;
-        }
+
+        .status-info { color: #aaa; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <h2>⏱️ TimeTracker - Zeiterfassung</h2>
+    <h2>Scanner Aktiv</h2>
+    <p class="status-info">Ein Klick auf das Bild aktiviert den Ton</p>
     
-    <div id="scanner-container">
+    <div id="scanner-wrapper">
         <div id="reader"></div>
-        <div class="scanner-overlay">
+        <div class="overlay">
             <div class="focus-box">
                 <div class="scan-line"></div>
             </div>
         </div>
     </div>
 
-    <div id="result-box">
-        Status: <br>
-        <span id="output">📷 Kamera wird gestartet...</span>
-    </div>
-
-    <button class="btn-manual" onclick="toggleManualInput()">⌨️ Manuelle Eingabe</button>
-    
-    <div id="manualArea" style="display: none;">
-        <input type="text" id="manualPnr" class="manual-input" placeholder="Personalnummer eingeben" />
-        <button class="btn-manual" onclick="stempelnManuell()">✅ Stempeln</button>
+    <div id="result-display">
+        <strong>Ergebnis:</strong>
+        <span id="output">Warte auf Scan...</span>
     </div>
 
     <script>
-        // Betriebs-ID aus der URL holen
-        const urlParams = new URLSearchParams(window.location.search);
-        const betriebId = urlParams.get('betrieb');
-        const SERVER_URL = 'http://172.20.10.6:5290';
-        
-        let html5QrCode = null;
-        
-        function toggleManualInput() {
-            const manualArea = document.getElementById('manualArea');
-            if (manualArea.style.display === 'none') {
-                manualArea.style.display = 'block';
-                // Kamera stoppen wenn sie läuft
-                if (html5QrCode && html5QrCode.isScanning) {
-                    html5QrCode.stop();
-                }
-            } else {
-                manualArea.style.display = 'none';
-                // Kamera neu starten
-                startScanner();
-            }
-        }
-        
-        async function stempelnManuell() {
-            const pnr = document.getElementById('manualPnr').value;
-            if (!pnr) {
-                document.getElementById('output').innerHTML = '<span class="error">❌ Bitte Personalnummer eingeben!</span>';
-                return;
-            }
-            
-            const url = `${SERVER_URL}/api/stempeln?b=${betriebId}&p=${pnr}`;
-            document.getElementById('output').innerHTML = "⏳ Sende...";
-            
-            try {
-                const response = await fetch(url);
-                const text = await response.text();
-                document.getElementById('output').innerHTML = "✅ " + text.substring(0, 100);
-            } catch (error) {
-                document.getElementById('output').innerHTML = `<span class="error">❌ Fehler: ${error.message}</span>`;
-            }
-        }
-        
-        function playBeep() {
+        const html5QrCode = new Html5Qrcode("reader");
+        let isPaused = false;
+
+        // Maximal lauter Ton durch Wellen-Stacking
+        function playExtremeBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = context.createOscillator();
-                const gainNode = context.createGain();
-                oscillator.type = "sawtooth";
-                oscillator.frequency.setValueAtTime(1000, context.currentTime);
-                gainNode.gain.setValueAtTime(0.5, context.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-                oscillator.connect(gainNode);
-                gainNode.connect(context.destination);
-                oscillator.start();
-                oscillator.stop(context.currentTime + 0.3);
-            } catch(e) { console.log("Beep nicht möglich"); }
-        }
-        
-        function startScanner() {
-            if (!betriebId) {
-                document.getElementById('output').innerHTML = '<span class="error">❌ Keine Betriebs-ID!<br>Bitte ?betrieb=ID anhängen</span>';
-                return;
+                const frequencies = [1000, 1005, 995]; 
+                
+                frequencies.forEach(freq => {
+                    const osc = context.createOscillator();
+                    const gain = context.createGain();
+
+                    osc.type = "sawtooth"; // Aggressivste Wellenform
+                    osc.frequency.setValueAtTime(freq, context.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.6, context.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+
+                    osc.connect(gain);
+                    gain.connect(context.destination);
+
+                    osc.start();
+                    osc.stop(context.currentTime + 0.5);
+                });
+            } catch (e) {
+                console.error("Audio Fehler:", e);
             }
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (isPaused) return;
+
+            // 1. Sperre für 5 Sekunden
+            isPaused = true;
             
-            const apiUrl = `${SERVER_URL}/api/stempeln?b=${betriebId}&p=`;
+            // 2. Lauten Ton abspielen
+            playExtremeBeep();
+
+            // 3. Vibration (Handy)
+            if (navigator.vibrate) navigator.vibrate(200);
+
+            // 4. Anzeige & Countdown
+            const output = document.getElementById('output');
+            output.style.color = "#ff4444"; 
             
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
-                if (html5QrCode && html5QrCode.isScanning) {
-                    html5QrCode.stop();
-                    playBeep();
-                    document.getElementById('output').innerHTML = "✅ Gescannt! Weiterleitung...";
-                    window.location.href = apiUrl + decodedText;
+            let timeLeft = 5;
+            const timer = setInterval(() => {
+                output.innerText = `Code: ${decodedText} \n (Pause: ${timeLeft}s)`;
+                timeLeft--;
+                
+                if (timeLeft < 0) {
+                    clearInterval(timer);
+                    isPaused = false;
+                    output.innerText = "Bereit für nächsten Scan";
+                    output.style.color = "#00ff00";
                 }
-            }).then(() => {
-                document.getElementById('output').innerHTML = "✅ Kamera läuft! QR-Code vorhalten";
-            }).catch((err) => {
-                document.getElementById('output').innerHTML = `<span class="error">❌ Kamera-Fehler: ${err}</span>`;
-                console.error(err);
-            });
+            }, 1000);
         }
-        
-        // Automatisch starten
-        if (betriebId) {
-            startScanner();
-        } else {
-            document.getElementById('output').innerHTML = '<span class="error">❌ Keine Betriebs-ID in der URL!<br>Bitte verwenden: ?betrieb=DEINE-BETRIEBS-ID</span>';
-        }
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 260, height: 180 },
+            aspectRatio: 1.0 
+        };
+
+        // Kamera starten
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess
+        ).catch(err => {
+            document.getElementById('output').innerText = "Kamera-Fehler: " + err;
+        });
     </script>
 </body>
 </html>
