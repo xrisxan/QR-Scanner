@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner mit Fokus-Fenster</title>
+    <title>TimeTracker - Zeiterfassung Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body {
@@ -80,11 +80,15 @@
             font-weight: bold;
             word-break: break-all;
         }
+        
+        .error {
+            color: #ff6666;
+        }
     </style>
 </head>
 <body>
 
-    <h2>TimeTracker - Zeiterfassung</h2>
+    <h2>⏱️ TimeTracker - Zeiterfassung</h2>
     
     <div id="scanner-container">
         <div id="reader"></div>
@@ -97,69 +101,79 @@
 
     <div id="result-box">
         Status: <br>
-        <span id="output">Warte auf Scan...</span>
+        <span id="output">📷 Kamera wird gestartet...</span>
     </div>
 
     <script>
-        // ⚠️ HIER deine Betriebs-ID eintragen!
-        // Betriebs-ID aus der URL holen
+        // Betriebs-ID aus der URL holen (z.B. ?betrieb=xxx)
         const urlParams = new URLSearchParams(window.location.search);
         const betriebId = urlParams.get('betrieb');
         
+        // Server-URL (muss an deine Umgebung angepasst werden)
+        // Für lokalen Test: http://172.20.10.6:5290
+        // Für Azure: https://deinappname.azurewebsites.net
+        const SERVER_URL = 'http://172.20.10.6:5290';
+        
         if (!betriebId) {
-            document.getElementById('output').innerText = "❌ Keine Betriebs-ID in der URL!";
+            document.getElementById('output').innerHTML = '<span class="error">❌ Keine Betriebs-ID in der URL!<br>Bitte verwenden: ?betrieb=DEINE-BETRIEBS-ID</span>';
         } else {
-        const apiUrl = `http://172.20.10.6:5290/api/stempeln?b=${betriebId}&p=`;
-        
-        const html5QrCode = new Html5Qrcode("reader");
-        let isPaused = false;
-        
-        function playLoudBeep() {
-            const context = new (window.AudioContext || window.webkitAudioContext)();
-            const frequencies = [1000, 1005, 995];
+            const apiUrl = `${SERVER_URL}/api/stempeln?b=${betriebId}&p=`;
             
-            frequencies.forEach(freq => {
-                const oscillator = context.createOscillator();
-                const gainNode = context.createGain();
-                oscillator.type = "sawtooth";
-                oscillator.frequency.setValueAtTime(freq, context.currentTime);
-                gainNode.gain.setValueAtTime(0.5, context.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
-                oscillator.connect(gainNode);
-                gainNode.connect(context.destination);
-                oscillator.start();
-                oscillator.stop(context.currentTime + 0.4);
+            const html5QrCode = new Html5Qrcode("reader");
+            let isPaused = false;
+            
+            function playLoudBeep() {
+                try {
+                    const context = new (window.AudioContext || window.webkitAudioContext)();
+                    const frequencies = [1000, 1005, 995];
+                    
+                    frequencies.forEach(freq => {
+                        const oscillator = context.createOscillator();
+                        const gainNode = context.createGain();
+                        oscillator.type = "sawtooth";
+                        oscillator.frequency.setValueAtTime(freq, context.currentTime);
+                        gainNode.gain.setValueAtTime(0.5, context.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
+                        oscillator.connect(gainNode);
+                        gainNode.connect(context.destination);
+                        oscillator.start();
+                        oscillator.stop(context.currentTime + 0.4);
+                    });
+                } catch(e) {
+                    console.log("Beep nicht möglich:", e);
+                }
+            }
+            
+            const onScanSuccess = (decodedText, decodedResult) => {
+                if (isPaused) return;
+                isPaused = true;
+                playLoudBeep();
+                
+                const output = document.getElementById('output');
+                output.innerHTML = "✅ Gescannt! Weiterleitung...";
+                output.style.color = "#ff3300";
+                
+                // Weiterleitung zur API (decodedText ist die Personalnummer)
+                window.location.href = apiUrl + decodedText;
+            };
+            
+            const config = { 
+                fps: 20,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0 
+            };
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess
+            ).then(() => {
+                document.getElementById('output').innerHTML = "✅ Kamera läuft! QR-Code vorhalten";
+            }).catch((err) => {
+                document.getElementById('output').innerHTML = `<span class="error">❌ Kamera-Fehler: ${err}</span>`;
+                console.error("Fehler:", err);
             });
         }
-        
-        const onScanSuccess = (decodedText, decodedResult) => {
-            if (isPaused) return;
-            isPaused = true;
-            playLoudBeep();
-
-            
-            
-            const output = document.getElementById('output');
-            output.innerText = "✅ Gescannt! Weiterleitung...";
-            output.style.color = "#ff3300";
-            
-            // 🔥 WEITERLEITUNG ZUR API (Personalnummer ist decodedText)
-            window.location.href = apiUrl + decodedText;
-        };
-        
-        const config = { 
-            fps: 20,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0 
-        };
-        
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            onScanSuccess
-        ).catch((err) => {
-            document.getElementById('output').innerText = "Fehler: " + err;
-        });
     </script>
 </body>
 </html>
