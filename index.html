@@ -63,7 +63,11 @@
             window.location.href = url;
         }
 
-        const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 400, height: 400 },
+            aspectRatio: 1.0 
+        };
         html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
             .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
             .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
