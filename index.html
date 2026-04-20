@@ -6,98 +6,31 @@
     <title>TimeTracker Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #121212;
-            color: white;
-            margin: 0;
-            padding: 20px;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #121212; color: white; margin: 0; padding: 20px; }
         h2 { margin-bottom: 10px; color: #00ff00; }
-        #scanner-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            border: 3px solid #333;
-            border-radius: 20px;
-            overflow: hidden;
-            background: #000;
-        }
+        #scanner-wrapper { position: relative; width: 100%; max-width: 500px; border: 3px solid #333; border-radius: 20px; overflow: hidden; background: #000; }
         #reader { width: 100%; }
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .focus-box {
-            width: 90%;
-            aspect-ratio: 1 / 1;
-            border: 3px solid #00ff00;
-            border-radius: 12px;
-            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6);
-            position: relative;
-        }
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 3px;
-            background: #00ff00;
-            box-shadow: 0 0 15px #00ff00;
-            top: 0;
-            animation: moveScan 2s linear infinite;
-        }
-        @keyframes moveScan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-        #result-display {
-            margin-top: 25px;
-            padding: 20px;
-            background: #222;
-            border-radius: 15px;
-            width: 100%;
-            max-width: 500px;
-            text-align: center;
-        }
-        #output {
-            display: block;
-            margin-top: 10px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #00ff00;
-            word-wrap: break-word;
-        }
+        .overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
+        .focus-box { width: 90%; aspect-ratio: 1 / 1; border: 3px solid #00ff00; border-radius: 12px; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6); position: relative; }
+        .scan-line { position: absolute; width: 100%; height: 3px; background: #00ff00; box-shadow: 0 0 15px #00ff00; top: 0; animation: moveScan 2s linear infinite; }
+        @keyframes moveScan { 0% { top: 0%; } 100% { top: 100%; } }
+        #result-display { margin-top: 25px; padding: 20px; background: #222; border-radius: 15px; width: 100%; max-width: 500px; text-align: center; }
+        #output { display: block; margin-top: 10px; font-size: 1.2rem; font-weight: bold; color: #00ff00; word-wrap: break-word; }
         .status-info { color: #aaa; font-size: 0.9rem; }
     </style>
 </head>
 <body>
     <h2>⏱️ TimeTracker Scanner</h2>
     <p class="status-info">QR-Code mit Personalnummer vorhalten</p>
-
     <div id="scanner-wrapper">
         <div id="reader"></div>
-        <div class="overlay">
-            <div class="focus-box">
-                <div class="scan-line"></div>
-            </div>
-        </div>
+        <div class="overlay"><div class="focus-box"><div class="scan-line"></div></div></div>
     </div>
-
-    <div id="result-display">
-        <strong>Status:</strong><br>
-        <span id="output">📷 Kamera wird gestartet...</span>
-    </div>
+    <div id="result-display"><strong>Status:</strong><br><span id="output">📷 Kamera wird gestartet...</span></div>
 
     <script>
-        // 🔥 HIER DEINE AKTUELLE NGROK-URL EINTRAGEN (OHNE PFEIL, OHNE ZUSATZ)
-        const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';
+        // 🔥 HIER DEINE NEUE NGROK-URL EINTRAGEN (NUR DIE BASIS-URL, OHNE ZUSATZ)
+        const SERVER_URL = 'https://neue-url.ngrok-free.dev';  // <-- HIER DEINE URL EINSETZEN
         const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
 
         const html5QrCode = new Html5Qrcode("reader");
@@ -122,36 +55,18 @@
         function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
-
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
-
-            const output = document.getElementById('output');
-            output.innerText = "✅ Erfolg! Leite weiter...";
-            output.style.color = "#ffaa00";
-
-            // decodedText ist die reine Personalnummer (z. B. "124578")
-            const url = window.location.href = decodedText;            
-            // const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
+            document.getElementById('output').innerHTML = "✅ Erfolg! Leite weiter...";
+            // WICHTIG: decodedText muss die Personalnummer sein (z. B. "124578")
+            const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
             window.location.href = url;
         }
 
-        const config = {
-            fps: 15,
-            qrbox: { width: 350, height: 350 },
-            aspectRatio: 1.0
-        };
-
-        html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            onScanSuccess
-        ).then(() => {
-            document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.";
-        }).catch(err => {
-            document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err;
-            console.error(err);
-        });
+        const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
+            .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
     </script>
 </body>
 </html>
