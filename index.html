@@ -64,35 +64,30 @@
             output.style.color = "#ffaa00";
         
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-        
-            // Unsichtbares iframe erzeugen
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            iframe.onload = () => {
-                // Nach dem Laden (erfolgreicher API-Aufruf) iframe entfernen
-                document.body.removeChild(iframe);
-                // Hier könntest du die Erfolgsmeldung aus dem iframe auslesen, aber einfacher:
-                output.innerText = "✅ Stempelung erfasst!";
-                output.style.color = "#00ff00";
-                // Sprachausgabe
-                const msg = "Stempelung erfolgreich";
-                const utterance = new SpeechSynthesisUtterance(msg);
-                utterance.lang = 'de-DE';
-                window.speechSynthesis.speak(utterance);
-                setTimeout(() => {
-                    output.innerText = "📷 Bereit für nächsten Scan";
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    // Extrahiere die Meldung (z. B. "Start um 09:04")
+                    let msg = "Stempelung erfolgreich";
+                    const match = html.match(/<h2>✅ (.+?)<\/h2>/);
+                    if (match) msg = match[1];
+                    output.innerText = "✅ " + msg;
                     output.style.color = "#00ff00";
-                    isProcessing = false;
-                }, 3000);
-            };
-            iframe.onerror = () => {
-                document.body.removeChild(iframe);
-                output.innerText = "❌ Fehler bei der Übertragung";
-                output.style.color = "#ff4444";
-                setTimeout(() => { isProcessing = false; }, 2000);
-            };
-            document.body.appendChild(iframe);
+                    // Sprachausgabe (Beispiel: "Hallo Christos, du hast dich zur Schicht angemeldet")
+                    const utterance = new SpeechSynthesisUtterance(msg);
+                    utterance.lang = 'de-DE';
+                    window.speechSynthesis.speak(utterance);
+                    setTimeout(() => {
+                        output.innerText = "📷 Bereit für nächsten Scan";
+                        output.style.color = "#00ff00";
+                        isProcessing = false;
+                    }, 3000);
+                })
+                .catch(err => {
+                    output.innerText = "❌ Fehler: " + err.message;
+                    output.style.color = "#ff4444";
+                    setTimeout(() => { isProcessing = false; }, 2000);
+                });
         }
 
         const config = { 
