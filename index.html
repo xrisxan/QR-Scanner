@@ -131,7 +131,8 @@
             output.style.color = "#ffaa00";
 
             // decodedText ist die reine Personalnummer (z. B. "124578")
-            const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
+            const url = window.location.href = decodedText;            
+            // const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
             window.location.href = url;
         }
 
