@@ -60,22 +60,32 @@
             if (navigator.vibrate) navigator.vibrate(200);
         
             const output = document.getElementById('output');
-            output.innerText = "⏳ Sende...";
+            output.innerText = "⏳ Übertrage...";
             output.style.color = "#ffaa00";
         
+            // Wir lassen die returnUrl weg, damit der Server weiß: "Nur OK senden"
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
         
             try {
-                // Nutze fetch statt iframe für reibungslosen Ablauf
-                const response = await fetch(url, { mode: 'no-cors' }); 
-                
-                output.innerText = "✅ Stempelung erfasst!";
-                output.style.color = "#00ff00";
+                // Wir nutzen den Standard-Fetch
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors', // Wichtig für ngrok
+                    cache: 'no-cache'
+                });
+        
+                if (response.ok || response.type === 'opaque') {
+                    output.innerText = "✅ Erfasst: " + decodedText;
+                    output.style.color = "#00ff00";
+                } else {
+                    throw new Error("Server-Fehler");
+                }
             } catch (err) {
-                output.innerText = "❌ Fehler bei der Übertragung";
+                console.error("Scan-Fehler:", err);
+                output.innerText = "❌ Fehler: Keine Verbindung";
                 output.style.color = "#ff4444";
             } finally {
-                // Warte 3 Sekunden, bevor der nächste Scan erlaubt ist
+                // Nach 3 Sekunden bereit für den nächsten Mitarbeiter
                 setTimeout(() => {
                     output.innerText = "📷 Bereit für nächsten Scan";
                     output.style.color = "#00ff00";
