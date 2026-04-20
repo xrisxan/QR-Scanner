@@ -55,12 +55,38 @@
         function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
+        
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
-            document.getElementById('output').innerHTML = "✅ Erfolg! Leite weiter...";
-            // WICHTIG: decodedText muss die Personalnummer sein (z. B. "124578")
+        
+            const output = document.getElementById('output');
+            output.innerText = "⏳ Sende...";
+            output.style.color = "#ffaa00";
+        
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-            window.location.href = url;
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    // Extrahiere die Meldung (z. B. "Start um 09:04")
+                    let msg = "✅ Erfolg";
+                    const match = html.match(/<h2>✅ (.+?)<\/h2>/);
+                    if (match) msg = "✅ " + match[1];
+                    output.innerText = msg;
+                    output.style.color = "#00ff00";
+                    // Nach 2 Sekunden wieder bereit für nächsten Scan
+                    setTimeout(() => {
+                        output.innerText = "📷 Bereit für nächsten Scan";
+                        output.style.color = "#00ff00";
+                        isProcessing = false;
+                    }, 2000);
+                })
+                .catch(err => {
+                    output.innerText = "❌ Fehler: " + err;
+                    output.style.color = "#ff4444";
+                    setTimeout(() => {
+                        isProcessing = false;
+                    }, 2000);
+                });
         }
 
         const config = { 
