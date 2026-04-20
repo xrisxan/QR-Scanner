@@ -55,10 +55,44 @@
         function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
+        
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
+        
+            const output = document.getElementById('output');
+            output.innerText = "⏳ Sende...";
+            output.style.color = "#ffaa00";
+        
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-            window.location.href = url;
+        
+            // Unsichtbares iframe erzeugen
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            iframe.onload = () => {
+                // Nach dem Laden (erfolgreicher API-Aufruf) iframe entfernen
+                document.body.removeChild(iframe);
+                // Hier könntest du die Erfolgsmeldung aus dem iframe auslesen, aber einfacher:
+                output.innerText = "✅ Stempelung erfasst!";
+                output.style.color = "#00ff00";
+                // Sprachausgabe
+                const msg = "Stempelung erfolgreich";
+                const utterance = new SpeechSynthesisUtterance(msg);
+                utterance.lang = 'de-DE';
+                window.speechSynthesis.speak(utterance);
+                setTimeout(() => {
+                    output.innerText = "📷 Bereit für nächsten Scan";
+                    output.style.color = "#00ff00";
+                    isProcessing = false;
+                }, 3000);
+            };
+            iframe.onerror = () => {
+                document.body.removeChild(iframe);
+                output.innerText = "❌ Fehler bei der Übertragung";
+                output.style.color = "#ff4444";
+                setTimeout(() => { isProcessing = false; }, 2000);
+            };
+            document.body.appendChild(iframe);
         }
 
         const config = { 
