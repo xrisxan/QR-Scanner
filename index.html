@@ -87,29 +87,25 @@
         <div class="status">QR-Code in die Mitte halten</div>
     </div>
 
-    <script>
-        const html5QrCode = new Html5Qrcode("reader");
-        let processing = false;
+<script>
+    // ⬇️ HIER KÖNNTEST DU DIE SERVER-URL DEFINIEREN (FALLS NÖTIG)
+    const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev -> https://localhost:7205';
+    const BETRIEB_ID = '89a340a6-42f2-47a9-a39c-1d6b71877878';
 
-        html5QrCode.start(
-            { facingMode: "environment" },
-            {
-                fps: 15,
-                qrbox: { width: 350, height: 350 }  // großer Suchbereich
-            },
-            (decodedText) => {
-                if (processing) return;
-                processing = true;
-                // Kurze Bestätigung (optional)
-                const statusDiv = document.querySelector('.status');
-                statusDiv.innerText = "✅ Erfolg! Weiterleitung...";
-                // Vollständige URL aus QR-Code öffnen
-                window.location.href = decodedText;
-            }
-        ).catch(err => {
-            console.error(err);
-            document.querySelector('.status').innerText = "❌ Kamera-Fehler: " + err;
-        });
-    </script>
+    const html5QrCode = new Html5Qrcode("reader");
+    let processing = false;
+
+    function onScanSuccess(decodedText) {
+        if (processing) return;
+        processing = true;
+
+        // Falls decodedText nur die Personalnummer ist, setze die URL zusammen:
+        // const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
+        // Andernfalls (volle URL) direkt verwenden:
+        window.location.href = decodedText;
+    }
+
+    html5QrCode.start(...);
+</script>
 </body>
 </html>
