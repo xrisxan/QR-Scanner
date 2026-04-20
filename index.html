@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profi QR & Barcode Scanner</title>
+    <title>TimeTracker - Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body {
@@ -32,7 +32,7 @@
 
         #reader { width: 100%; }
 
-        /* Visuelles Overlay (Fixier-Fenster) */
+        /* Visuelles Overlay (Fixier-Fenster) – jetzt viel größer */
         .overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -44,8 +44,8 @@
         }
 
         .focus-box {
-            width: 260px;
-            height: 180px; /* Rechteckig, gut für QR & Barcodes */
+            width: 380px;      /* viel breiter */
+            height: 280px;     /* viel höher */
             border: 3px solid #00ff00;
             border-radius: 12px;
             box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6);
@@ -93,8 +93,8 @@
 </head>
 <body>
 
-    <h2>Scanner Aktiv</h2>
-    <p class="status-info">Ein Klick auf das Bild aktiviert den Ton</p>
+    <h2>TimeTracker - Scanner</h2>
+    <p class="status-info">QR-Code vorhalten – Kamera startet automatisch</p>
     
     <div id="scanner-wrapper">
         <div id="reader"></div>
@@ -106,74 +106,53 @@
     </div>
 
     <div id="result-display">
-        <strong>Ergebnis:</strong>
+        <strong>Status:</strong>
         <span id="output">Warte auf Scan...</span>
     </div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        let isPaused = false;
+        let isProcessing = false;  // verhindert mehrfaches Auslösen
 
-        // Maximal lauter Ton durch Wellen-Stacking
-        function playExtremeBeep() {
+        // Kurzer, lauter Piepton (nur einmal)
+        function playBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
-                const frequencies = [1000, 1005, 995]; 
-                
-                frequencies.forEach(freq => {
-                    const osc = context.createOscillator();
-                    const gain = context.createGain();
-
-                    osc.type = "sawtooth"; // Aggressivste Wellenform
-                    osc.frequency.setValueAtTime(freq, context.currentTime);
-                    
-                    gain.gain.setValueAtTime(0.6, context.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
-
-                    osc.connect(gain);
-                    gain.connect(context.destination);
-
-                    osc.start();
-                    osc.stop(context.currentTime + 0.5);
-                });
+                const osc = context.createOscillator();
+                const gain = context.createGain();
+                osc.type = "sawtooth";
+                osc.frequency.setValueAtTime(1000, context.currentTime);
+                gain.gain.setValueAtTime(0.6, context.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(context.destination);
+                osc.start();
+                osc.stop(context.currentTime + 0.3);
             } catch (e) {
                 console.error("Audio Fehler:", e);
             }
         }
 
         function onScanSuccess(decodedText, decodedResult) {
-            if (isPaused) return;
+            if (isProcessing) return;
+            isProcessing = true;
 
-            // 1. Sperre für 5 Sekunden
-            isPaused = true;
-            
-            // 2. Lauten Ton abspielen
-            playExtremeBeep();
-
-            // 3. Vibration (Handy)
+            // Erfolgston + Vibration
+            playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
 
-            // 4. Anzeige & Countdown
+            // Kurze Bestätigung anzeigen
             const output = document.getElementById('output');
-            output.style.color = "#ff4444"; 
-            
-            let timeLeft = 5;
-            const timer = setInterval(() => {
-                output.innerText = `Code: ${decodedText} \n (Pause: ${timeLeft}s)`;
-                timeLeft--;
-                
-                if (timeLeft < 0) {
-                    clearInterval(timer);
-                    isPaused = false;
-                    output.innerText = "Bereit für nächsten Scan";
-                    output.style.color = "#00ff00";
-                }
-            }, 1000);
+            output.innerText = "✅ Gescannt! Leite weiter...";
+            output.style.color = "#ffaa00";
+
+            // Weiterleitung zur URL aus dem QR-Code (enthält bereits Betriebs-ID und Personalnummer)
+            window.location.href = decodedText;
         }
 
         const config = { 
             fps: 20, 
-            qrbox: { width: 260, height: 180 },
+            qrbox: { width: 380, height: 280 },  // an das Fokus-Fenster angepasst
             aspectRatio: 1.0 
         };
 
@@ -183,7 +162,8 @@
             config, 
             onScanSuccess
         ).catch(err => {
-            document.getElementById('output').innerText = "Kamera-Fehler: " + err;
+            document.getElementById('output').innerText = "❌ Kamera-Fehler: " + err;
+            console.error(err);
         });
     </script>
 </body>
