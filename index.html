@@ -29,62 +29,53 @@
     <div id="result-display"><strong>Status:</strong><br><span id="output">📷 Kamera wird gestartet...</span></div>
 
     <script>
-        const SERVER_URL = ' https://makeover-strep-segment.ngrok-free.dev';
+        // 1. URL GENAU PRÜFEN (Kein Leerzeichen am Anfang!)
+        const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';
         const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
-
+        
         const html5QrCode = new Html5Qrcode("reader");
         let isProcessing = false;
-
-        function playBeep() {
-            try {
-                const context = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = context.createOscillator();
-                const gain = context.createGain();
-                osc.type = "sawtooth";
-                osc.frequency.setValueAtTime(1200, context.currentTime);
-                gain.gain.setValueAtTime(0.5, context.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-                osc.connect(gain);
-                gain.connect(context.destination);
-                osc.start();
-                osc.stop(context.currentTime + 0.3);
-            } catch (e) { console.log("Beep nicht möglich", e); }
-        }
-
+        
+        // Audio-Kontext einmalig initialisieren (Browser-Vorgabe)
+        let audioCtx = null;
+        
         async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
         
+            // Beep & Vibration
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
         
             const output = document.getElementById('output');
-            output.innerText = "⏳ Übertrage...";
+            output.innerText = "⏳ Verarbeite: " + decodedText;
             output.style.color = "#ffaa00";
         
-            // Wir lassen die returnUrl weg, damit der Server weiß: "Nur OK senden"
+            // WICHTIG: Wir hängen KEIN returnUrl an. 
+            // Dadurch weiß dein C#-Server, dass er kein HTML senden soll.
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
         
             try {
-                // Wir nutzen den Standard-Fetch
                 const response = await fetch(url, {
                     method: 'GET',
-                    mode: 'cors', // Wichtig für ngrok
-                    cache: 'no-cache'
+                    mode: 'cors', 
+                    headers: { 'ngrok-skip-browser-warning': 'true' } // Umgeht die ngrok-Warnseite
                 });
         
-                if (response.ok || response.type === 'opaque') {
-                    output.innerText = "✅ Erfasst: " + decodedText;
+                if (response.ok) {
+                    output.innerText = "✅ Erfolgreich erfasst!";
                     output.style.color = "#00ff00";
                 } else {
-                    throw new Error("Server-Fehler");
+                    output.innerText = "⚠️ Server meldet Fehler (" + response.status + ")";
+                    output.style.color = "#ff4444";
                 }
             } catch (err) {
-                console.error("Scan-Fehler:", err);
-                output.innerText = "❌ Fehler: Keine Verbindung";
+                console.error("Fetch Error:", err);
+                output.innerText = "❌ Verbindung fehlgeschlagen";
                 output.style.color = "#ff4444";
             } finally {
-                // Nach 3 Sekunden bereit für den nächsten Mitarbeiter
+                // Die Kamera bleibt die ganze Zeit an! 
+                // Wir warten nur 3 Sek, bis der nächste Mitarbeiter scannen darf.
                 setTimeout(() => {
                     output.innerText = "📷 Bereit für nächsten Scan";
                     output.style.color = "#00ff00";
@@ -92,12 +83,27 @@
                 }, 3000);
             }
         }
-
-        const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
-
+        
+        function playBeep() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } catch (e) { console.error(e); }
+        }
+        
+        const config = { fps: 20, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+        
         html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
-            .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
+            .then(() => document.getElementById('output').innerHTML = "📷 Scanner aktiv.")
+            .catch(err => document.getElementById('output').innerHTML = "❌ Fehler: " + err);
     </script>
 </body>
 </html>
