@@ -2,20 +2,20 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>TimeTracker Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #121212; color: white; margin: 0; padding: 20px; }
         h2 { margin-bottom: 10px; color: #00ff00; }
-        #scanner-wrapper { position: relative; width: 100%; max-width: 500px; border: 3px solid #333; border-radius: 20px; overflow: hidden; background: #000; }
-        #reader { width: 100%; }
+        #scanner-wrapper { position: relative; width: 100%; max-width: 500px; border: 3px solid #333; border-radius: 20px; overflow: hidden; background: #000; aspect-ratio: 3/4; }
+        #reader { width: 100%; height: 100%; object-fit: cover; }
         .overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
         .focus-box { width: 90%; aspect-ratio: 1 / 1; border: 3px solid #00ff00; border-radius: 12px; box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6); position: relative; }
         .scan-line { position: absolute; width: 100%; height: 3px; background: #00ff00; box-shadow: 0 0 15px #00ff00; top: 0; animation: moveScan 2s linear infinite; }
         @keyframes moveScan { 0% { top: 0%; } 100% { top: 100%; } }
-        #result-display { margin-top: 25px; padding: 20px; background: #222; border-radius: 15px; width: 100%; max-width: 500px; text-align: center; }
-        #output { display: block; margin-top: 10px; font-size: 1.2rem; font-weight: bold; color: #00ff00; word-wrap: break-word; }
+        #result-display { margin-top: 20px; padding: 15px; background: #222; border-radius: 15px; width: 100%; max-width: 500px; text-align: center; }
+        #output { font-size: 1rem; font-weight: bold; color: #00ff00; word-wrap: break-word; }
         .status-info { color: #aaa; font-size: 0.9rem; }
     </style>
 </head>
@@ -29,8 +29,8 @@
     <div id="result-display"><strong>Status:</strong><br><span id="output">📷 Kamera wird gestartet...</span></div>
 
     <script>
-        // 🔥 HIER DEINE NEUE NGROK-URL EINTRAGEN (NUR DIE BASIS-URL, OHNE ZUSATZ)
-        const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';  // <-- HIER DEINE URL EINSETZEN
+        // 🔥 HIER DEINE AKTUELLE NGROK-URL EINTRAGEN (NUR DIE BASIS-URL, OHNE ZUSATZ)
+        const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';
         const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
 
         const html5QrCode = new Html5Qrcode("reader");
@@ -57,21 +57,20 @@
             isProcessing = true;
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
+
             const returnUrl = encodeURIComponent(window.location.href);
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}&returnUrl=${returnUrl}`;
+            // Direkte Weiterleitung – die API-Seite leitet nach 2 Sekunden automatisch zurück
             window.location.href = url;
         }
-        
-        const config = { 
-            fps: 15, 
-            qrbox: { width: 400, height: 400 },   // größerer Suchbereich
-            aspectRatio: 1.0,
-            videoConstraints: { 
-                facingMode: "environment",
-                width: { ideal: 1280 },           // höhere Auflösung
-                height: { ideal: 720 }
-            }
+
+        // Vereinfachte Konfiguration – keine videoConstraints, nur nötige Parameter
+        const config = {
+            fps: 15,
+            qrbox: { width: 350, height: 350 },
+            aspectRatio: 1.0
         };
+
         html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
             .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
             .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
