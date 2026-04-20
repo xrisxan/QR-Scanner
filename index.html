@@ -2,8 +2,8 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TimeTracker - Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profi QR & Barcode Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body {
@@ -19,28 +19,23 @@
 
         h2 { margin-bottom: 10px; color: #00ff00; }
 
+        /* Container für das Kamera-Fenster */
         #scanner-wrapper {
             position: relative;
             width: 100%;
             max-width: 500px;
+            border: 3px solid #333;
             border-radius: 20px;
             overflow: hidden;
             background: #000;
-            aspect-ratio: 3 / 4;
         }
 
-        #reader {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        #reader { width: 100%; }
 
+        /* Visuelles Overlay (Fixier-Fenster) – jetzt viel größer */
         .overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -50,11 +45,10 @@
 
         .focus-box {
             width: 90%;               /* fast volle Breite */
-            height: auto;
-            padding-bottom: 66%;      /* 3:2-Format – großzügig */
+            aspect-ratio: 1 / 1;      /* quadratisch – perfekt für QR-Codes */
             border: 3px solid #00ff00;
             border-radius: 12px;
-            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6);
             position: relative;
         }
 
@@ -69,33 +63,39 @@
         }
 
         @keyframes moveScan {
-            0% { top: 0; }
+            0% { top: 0%; }
             100% { top: 100%; }
         }
 
+        /* Ergebnis-Box */
         #result-display {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 25px;
+            padding: 20px;
             background: #222;
             border-radius: 15px;
             width: 100%;
             max-width: 500px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
         #output {
-            font-size: 1rem;
+            display: block;
+            margin-top: 10px;
+            font-size: 1.2rem;
             font-weight: bold;
             color: #00ff00;
             word-wrap: break-word;
         }
+
+        .status-info { color: #aaa; font-size: 0.9rem; }
     </style>
 </head>
 <body>
 
-    <h2>⏱️ TimeTracker - Zeiterfassung</h2>
+    <h2>Scanner Aktiv</h2>
     <p class="status-info">QR-Code in die Mitte halten – Kamera startet automatisch</p>
-
+    
     <div id="scanner-wrapper">
         <div id="reader"></div>
         <div class="overlay">
@@ -106,63 +106,75 @@
     </div>
 
     <div id="result-display">
-        <strong>Status:</strong><br>
-        <span id="output">📷 Kamera wird gestartet...</span>
+        <strong>Ergebnis:</strong>
+        <span id="output">Warte auf Scan...</span>
     </div>
 
     <script>
+        // Falls du jemals QR-Codes mit NUR Personalnummer verwenden möchtest:
+        // const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';  // HIER DEINE NGROK-URL EINTRAGEN
+        // const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
+        // Dann würde der Scanner die URL so zusammensetzen:
+        // const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
+        // Dein QR-Code enthält aber bereits die vollständige URL – daher reicht decodedText.
+
         const html5QrCode = new Html5Qrcode("reader");
         let isProcessing = false;
 
-        // Kurzer Piepton (optional)
-        function playBeep() {
+        // Maximal lauter Ton (bleibt wie gehabt)
+        function playExtremeBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = context.createOscillator();
-                const gain = context.createGain();
-                osc.type = "sawtooth";
-                osc.frequency.setValueAtTime(1200, context.currentTime);
-                gain.gain.setValueAtTime(0.5, context.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-                osc.connect(gain);
-                gain.connect(context.destination);
-                osc.start();
-                osc.stop(context.currentTime + 0.3);
+                const frequencies = [1000, 1005, 995]; 
+                frequencies.forEach(freq => {
+                    const osc = context.createOscillator();
+                    const gain = context.createGain();
+                    osc.type = "sawtooth";
+                    osc.frequency.setValueAtTime(freq, context.currentTime);
+                    gain.gain.setValueAtTime(0.6, context.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(context.destination);
+                    osc.start();
+                    osc.stop(context.currentTime + 0.5);
+                });
             } catch (e) {
-                console.log("Beep nicht möglich", e);
+                console.error("Audio Fehler:", e);
             }
         }
 
-        function onScanSuccess(decodedText) {
+        function onScanSuccess(decodedText, decodedResult) {
             if (isProcessing) return;
-            isProcessing = true;
 
-            playBeep();
+            // Sofort sperren, damit nicht mehrfach ausgelöst wird
+            isProcessing = true;
+            
+            // Lauter Ton + Vibration
+            playExtremeBeep();
             if (navigator.vibrate) navigator.vibrate(200);
 
+            // Kurze Bestätigung anzeigen
             const output = document.getElementById('output');
-            output.innerText = "✅ Erfolg! Leite weiter...";
+            output.innerText = "✅ Gescannt! Leite weiter...";
             output.style.color = "#ffaa00";
 
-            // QR-Code enthält die vollständige API-URL (mit Betriebs-ID und Personalnummer)
+            // 🔥 WEITERLEITUNG ZUR API-URL (die vollständige URL steckt im QR-Code)
             window.location.href = decodedText;
         }
 
-        const config = {
-            fps: 15,
-            qrbox: { width: 350, height: 350 },  // großer Suchbereich (angepasst an Fokus-Box)
-            aspectRatio: 1.0
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 350, height: 350 },  // an das große Fokus-Fenster angepasst
+            aspectRatio: 1.0 
         };
 
+        // Kamera starten
         html5QrCode.start(
-            { facingMode: "environment" },
-            config,
+            { facingMode: "environment" }, 
+            config, 
             onScanSuccess
-        ).then(() => {
-            document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.";
-        }).catch(err => {
-            document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err;
-            console.error(err);
+        ).catch(err => {
+            document.getElementById('output').innerText = "Kamera-Fehler: " + err;
         });
     </script>
 </body>
