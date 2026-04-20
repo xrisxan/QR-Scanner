@@ -32,10 +32,10 @@
         // 🔥 HIER DEINE AKTUELLE NGROK-URL EINTRAGEN (NUR DIE BASIS-URL, OHNE ZUSATZ)
         const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';
         const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
-
+        
         const html5QrCode = new Html5Qrcode("reader");
         let isProcessing = false;
-
+        
         function playBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,8 +51,8 @@
                 osc.stop(context.currentTime + 0.3);
             } catch (e) { console.log("Beep nicht möglich", e); }
         }
-
-        function onScanSuccess(decodedText) {
+        
+        async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
         
@@ -63,42 +63,41 @@
             output.innerText = "⏳ Sende...";
             output.style.color = "#ffaa00";
         
-            const returnUrl = encodeURIComponent(window.location.href);
-            const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}&returnUrl=${returnUrl}`;
+            const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
         
-            // Unsichtbares iframe – API-Aufruf im Hintergrund
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            iframe.onload = () => {
-                document.body.removeChild(iframe);
+            try {
+                // Nutze fetch statt iframe für reibungslosen Ablauf
+                const response = await fetch(url, { mode: 'no-cors' }); 
+                
                 output.innerText = "✅ Stempelung erfasst!";
                 output.style.color = "#00ff00";
+            } catch (err) {
+                output.innerText = "❌ Fehler bei der Übertragung";
+                output.style.color = "#ff4444";
+            } finally {
+                // Warte 3 Sekunden, bevor der nächste Scan erlaubt ist
                 setTimeout(() => {
                     output.innerText = "📷 Bereit für nächsten Scan";
                     output.style.color = "#00ff00";
                     isProcessing = false;
-                }, 2000);
-            };
-            iframe.onerror = () => {
-                document.body.removeChild(iframe);
-                output.innerText = "❌ Fehler bei der Übertragung";
-                output.style.color = "#ff4444";
-                setTimeout(() => { isProcessing = false; }, 2000);
-            };
-            document.body.appendChild(iframe);
+                }, 3000);
+            }
         }
-
-        // Vereinfachte Konfiguration – keine videoConstraints, nur nötige Parameter
+        
         const config = {
-            fps: 15,
-            qrbox: { width: 350, height: 350 },
+            fps: 20, // Höhere FPS für flüssigeres Scannen
+            qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0
         };
-
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-            .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
-            .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
+        
+        // Startet die Kamera und hält den Stream offen
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess
+        ).catch(err => {
+            document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err;
+        });
     </script>
 </body>
 </html>
