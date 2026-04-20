@@ -29,13 +29,12 @@
     <div id="result-display"><strong>Status:</strong><br><span id="output">📷 Kamera wird gestartet...</span></div>
 
     <script>
-        // 🔥 HIER DEINE AKTUELLE NGROK-URL EINTRAGEN (NUR DIE BASIS-URL, OHNE ZUSATZ)
         const SERVER_URL = 'https://makeover-strep-segment.ngrok-free.dev';
         const BETRIEB_ID = '89a340a6-42fc-47a9-a39c-1d6b71877878';
-        
+
         const html5QrCode = new Html5Qrcode("reader");
         let isProcessing = false;
-        
+
         function playBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,63 +50,48 @@
                 osc.stop(context.currentTime + 0.3);
             } catch (e) { console.log("Beep nicht möglich", e); }
         }
-        
-        async function onScanSuccess(decodedText) {
+
+        function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
-        
+
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
-        
+
             const output = document.getElementById('output');
-            output.innerText = "⏳ Übertrage...";
+            output.innerText = "⏳ Sende...";
             output.style.color = "#ffaa00";
-        
-            // Wir lassen die returnUrl weg, damit der Server weiß: "Nur OK senden"
+
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-        
-            try {
-                // Wir nutzen den Standard-Fetch
-                const response = await fetch(url, {
-                    method: 'GET',
-                    mode: 'cors', // Wichtig für ngrok
-                    cache: 'no-cache'
-                });
-        
-                if (response.ok || response.type === 'opaque') {
-                    output.innerText = "✅ Erfasst: " + decodedText;
-                    output.style.color = "#00ff00";
-                } else {
-                    throw new Error("Server-Fehler");
-                }
-            } catch (err) {
-                console.error("Scan-Fehler:", err);
-                output.innerText = "❌ Fehler: Keine Verbindung";
-                output.style.color = "#ff4444";
-            } finally {
-                // Nach 3 Sekunden bereit für den nächsten Mitarbeiter
+
+            // Unsichtbares iframe – keine CORS-Probleme, keine Seitenumleitung
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            iframe.onload = () => {
+                document.body.removeChild(iframe);
+                output.innerText = "✅ Erfasst: " + decodedText;
+                output.style.color = "#00ff00";
                 setTimeout(() => {
                     output.innerText = "📷 Bereit für nächsten Scan";
                     output.style.color = "#00ff00";
                     isProcessing = false;
-                }, 3000);
-            }
+                }, 2000);
+            };
+            iframe.onerror = () => {
+                document.body.removeChild(iframe);
+                output.innerText = "❌ Fehler bei der Übertragung";
+                output.style.color = "#ff4444";
+                setTimeout(() => { isProcessing = false; }, 2000);
+            };
+            document.body.appendChild(iframe);
         }
-        
-        const config = {
-            fps: 20, // Höhere FPS für flüssigeres Scannen
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-        };
-        
-        // Startet die Kamera und hält den Stream offen
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
-            onScanSuccess
-        ).catch(err => {
-            document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err;
-        });
+
+        const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
+
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .then(() => document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.")
+            .catch(err => document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err);
     </script>
 </body>
 </html>
