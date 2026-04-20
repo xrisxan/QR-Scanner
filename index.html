@@ -2,40 +2,64 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>TimeTracker - Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #121212;
-            color: white;
-            margin: 0;
+            justify-content: flex-start;
             padding: 20px;
         }
 
-        h2 { margin-bottom: 10px; color: #00ff00; }
+        h2 {
+            margin-bottom: 10px;
+            color: #00ff00;
+            font-size: 1.4rem;
+        }
 
-        /* Container für das Kamera-Fenster */
+        .status-info {
+            color: #aaa;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+        }
+
+        /* Scanner-Container – nimmt volle Breite, maximal 500px */
         #scanner-wrapper {
             position: relative;
             width: 100%;
             max-width: 500px;
-            border: 3px solid #333;
             border-radius: 20px;
             overflow: hidden;
             background: #000;
+            aspect-ratio: 3 / 4;  /* typisches Kamerabild-Verhältnis */
         }
 
-        #reader { width: 100%; }
+        #reader {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
-        /* Visuelles Overlay (Fixier-Fenster) – jetzt viel größer */
+        /* Overlay mit großem, grünem Fokus-Rechteck */
         .overlay {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -44,11 +68,12 @@
         }
 
         .focus-box {
-            width: 380px;      /* viel breiter */
-            height: 280px;     /* viel höher */
+            width: 90%;               /* fast volle Breite */
+            height: auto;
+            padding-bottom: 66%;      /* 3:2-Format – großzügig */
             border: 3px solid #00ff00;
             border-radius: 12px;
-            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.5);
             position: relative;
         }
 
@@ -63,39 +88,41 @@
         }
 
         @keyframes moveScan {
-            0% { top: 0%; }
+            0% { top: 0; }
             100% { top: 100%; }
         }
 
-        /* Ergebnis-Box */
         #result-display {
-            margin-top: 25px;
-            padding: 20px;
+            margin-top: 20px;
+            padding: 15px;
             background: #222;
             border-radius: 15px;
             width: 100%;
             max-width: 500px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
         #output {
-            display: block;
-            margin-top: 10px;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
             color: #00ff00;
             word-wrap: break-word;
         }
 
-        .status-info { color: #aaa; font-size: 0.9rem; }
+        /* Hinweis, falls Kamera nicht startet */
+        .error-note {
+            margin-top: 15px;
+            font-size: 0.7rem;
+            color: #ff8888;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <h2>TimeTracker - Scanner</h2>
-    <p class="status-info">QR-Code vorhalten – Kamera startet automatisch</p>
-    
+    <h2>⏱️ TimeTracker - Zeiterfassung</h2>
+    <p class="status-info">QR-Code in die Mitte halten – Kamera startet automatisch</p>
+
     <div id="scanner-wrapper">
         <div id="reader"></div>
         <div class="overlay">
@@ -106,30 +133,34 @@
     </div>
 
     <div id="result-display">
-        <strong>Status:</strong>
-        <span id="output">Warte auf Scan...</span>
+        <strong>Status:</strong><br>
+        <span id="output">📷 Kamera wird gestartet...</span>
+    </div>
+    <div class="error-note">
+        ❗ Falls die Kamera nicht startet: Bitte Kamera-Zugriff im Browser erlauben.
     </div>
 
     <script>
         const html5QrCode = new Html5Qrcode("reader");
-        let isProcessing = false;  // verhindert mehrfaches Auslösen
+        let isProcessing = false;
 
-        // Kurzer, lauter Piepton (nur einmal)
+        // Kurzer, lauter Piepton (optional)
         function playBeep() {
             try {
                 const context = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = context.createOscillator();
                 const gain = context.createGain();
                 osc.type = "sawtooth";
-                osc.frequency.setValueAtTime(1000, context.currentTime);
-                gain.gain.setValueAtTime(0.6, context.currentTime);
+                osc.frequency.setValueAtTime(1200, context.currentTime);
+                gain.gain.setValueAtTime(0.5, context.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
                 osc.connect(gain);
                 gain.connect(context.destination);
                 osc.start();
                 osc.stop(context.currentTime + 0.3);
             } catch (e) {
-                console.error("Audio Fehler:", e);
+                // AudioContext aus Sicherheitsgründen manchmal blockiert – ignorieren
+                console.log("Beep nicht möglich", e);
             }
         }
 
@@ -141,28 +172,32 @@
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
 
-            // Kurze Bestätigung anzeigen
+            // Kurze Rückmeldung
             const output = document.getElementById('output');
-            output.innerText = "✅ Gescannt! Leite weiter...";
+            output.innerText = "✅ Erfolg! Leite weiter...";
             output.style.color = "#ffaa00";
 
-            // Weiterleitung zur URL aus dem QR-Code (enthält bereits Betriebs-ID und Personalnummer)
+            // Wichtig: Der QR-Code MUSS die vollständige URL enthalten!
+            // Beispiel: https://deine-ngrok-url.ngrok-free.dev/api/stempeln?b=...&p=...
             window.location.href = decodedText;
         }
 
-        const config = { 
-            fps: 20, 
-            qrbox: { width: 380, height: 280 },  // an das Fokus-Fenster angepasst
-            aspectRatio: 1.0 
+        // Konfiguration: kein qrbox -> gesamtes Bild wird gescannt (großer Bereich)
+        const config = {
+            fps: 15,
+            qrbox: { width: 350, height: 350 },  // immer noch groß, aber nicht notwendig, wenn wir die Box weglassen
+            aspectRatio: 1.0
         };
 
-        // Kamera starten
+        // Kamera starten (Rückkamera)
         html5QrCode.start(
-            { facingMode: "environment" }, 
-            config, 
+            { facingMode: "environment" },
+            config,
             onScanSuccess
-        ).catch(err => {
-            document.getElementById('output').innerText = "❌ Kamera-Fehler: " + err;
+        ).then(() => {
+            document.getElementById('output').innerHTML = "📷 Kamera läuft.<br>QR-Code vorhalten.";
+        }).catch(err => {
+            document.getElementById('output').innerHTML = "❌ Kamera-Fehler: " + err;
             console.error(err);
         });
     </script>
