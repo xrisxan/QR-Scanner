@@ -54,37 +54,10 @@
         function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
-
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
-
-            const output = document.getElementById('output');
-            output.innerText = "⏳ Sende...";
-            output.style.color = "#ffaa00";
-
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-
-            // Unsichtbares iframe – keine CORS-Probleme, keine Seitenumleitung
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            iframe.onload = () => {
-                document.body.removeChild(iframe);
-                output.innerText = "✅ Erfasst: " + decodedText;
-                output.style.color = "#00ff00";
-                setTimeout(() => {
-                    output.innerText = "📷 Bereit für nächsten Scan";
-                    output.style.color = "#00ff00";
-                    isProcessing = false;
-                }, 2000);
-            };
-            iframe.onerror = () => {
-                document.body.removeChild(iframe);
-                output.innerText = "❌ Fehler bei der Übertragung";
-                output.style.color = "#ff4444";
-                setTimeout(() => { isProcessing = false; }, 2000);
-            };
-            document.body.appendChild(iframe);
+            window.location.href = url;
         }
 
         const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
