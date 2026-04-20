@@ -51,13 +51,46 @@
             } catch (e) { console.log("Beep nicht möglich", e); }
         }
 
-        function onScanSuccess(decodedText) {
+        async function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
+        
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
+        
+            const output = document.getElementById('output');
+            output.innerText = "⏳ Übertrage...";
+            output.style.color = "#ffaa00";
+        
+            // Wir lassen die returnUrl weg, damit der Server weiß: "Nur OK senden"
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-            window.location.href = url;
+        
+            try {
+                // Wir nutzen den Standard-Fetch
+                const response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors', // Wichtig für ngrok
+                    cache: 'no-cache'
+                });
+        
+                if (response.ok || response.type === 'opaque') {
+                    output.innerText = "✅ Erfasst: " + decodedText;
+                    output.style.color = "#00ff00";
+                } else {
+                    throw new Error("Server-Fehler");
+                }
+            } catch (err) {
+                console.error("Scan-Fehler:", err);
+                output.innerText = "❌ Fehler: Keine Verbindung";
+                output.style.color = "#ff4444";
+            } finally {
+                // Nach 3 Sekunden bereit für den nächsten Mitarbeiter
+                setTimeout(() => {
+                    output.innerText = "📷 Bereit für nächsten Scan";
+                    output.style.color = "#00ff00";
+                    isProcessing = false;
+                }, 3000);
+            }
         }
 
         const config = { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 };
