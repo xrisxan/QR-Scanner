@@ -55,41 +55,11 @@
         function onScanSuccess(decodedText) {
             if (isProcessing) return;
             isProcessing = true;
-        
             playBeep();
             if (navigator.vibrate) navigator.vibrate(200);
-        
-            const output = document.getElementById('output');
-            output.innerText = "⏳ Sende...";
-            output.style.color = "#ffaa00";
-        
             const url = `${SERVER_URL}/api/stempeln?b=${BETRIEB_ID}&p=${decodedText}`;
-            fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    // Extrahiere die Meldung (z. B. "Start um 09:04")
-                    let msg = "Stempelung erfolgreich";
-                    const match = html.match(/<h2>✅ (.+?)<\/h2>/);
-                    if (match) msg = match[1];
-                    output.innerText = "✅ " + msg;
-                    output.style.color = "#00ff00";
-                    // Sprachausgabe (Beispiel: "Hallo Christos, du hast dich zur Schicht angemeldet")
-                    const utterance = new SpeechSynthesisUtterance(msg);
-                    utterance.lang = 'de-DE';
-                    window.speechSynthesis.speak(utterance);
-                    setTimeout(() => {
-                        output.innerText = "📷 Bereit für nächsten Scan";
-                        output.style.color = "#00ff00";
-                        isProcessing = false;
-                    }, 3000);
-                })
-                .catch(err => {
-                    output.innerText = "❌ Fehler: " + err.message;
-                    output.style.color = "#ff4444";
-                    setTimeout(() => { isProcessing = false; }, 2000);
-                });
+            window.location.href = url;
         }
-
         const config = { 
             fps: 15, 
             qrbox: { width: 400, height: 400 },   // größerer Suchbereich
